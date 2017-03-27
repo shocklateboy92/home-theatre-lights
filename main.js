@@ -1,3 +1,4 @@
+const RestClient = require('./rest.js');
 const nodecec = require("node-cec");
 
 const NodeCec = nodecec.NodeCec;
@@ -17,12 +18,12 @@ process.on('SIGINT', () => {
 // Event handling
 cec.once('ready', client => {
     console.log('>>> Client Ready');
-    // client.sendCommand(0xf0, CEC.Opcode.GIVE_DEVICE_POWER_STATUS);
+    RestClient.init();
 });
 
 let lastRequestTime = Date.now();
 const MS_IN_SEC = 1000;
-const MIN_TIME_THRESHOLD = 10 * MS_IN_SEC;
+const MIN_TIME_THRESHOLD = 30 * MS_IN_SEC;
 
 function processTvPacket(packet) {
     const currentTime = Date.now();
@@ -44,6 +45,7 @@ cec.on('REPORT_POWER_STATUS', (packet, status) => {
 
     if (status === CEC.PowerStatus.ON) {
         console.log(">>> Projector is ON. Doing the thing!");
+        RestClient.dimLights();
     }
 });
 
