@@ -1,3 +1,6 @@
+// add timestamps in front of log messages
+require('console-stamp')(console, '[HH:MM:ss.l]');
+
 const RestClient = require('./rest.js');
 const nodecec = require("node-cec");
 
