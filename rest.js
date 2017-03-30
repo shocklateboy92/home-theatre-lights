@@ -1,6 +1,6 @@
 const fetch = require('node-fetch');
 
-let token = '';
+const token = require('./creds').token;
 
 function authFetch(url, callback) {
     fetch(
