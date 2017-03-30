@@ -22,10 +22,15 @@ cec.once('ready', client => {
 });
 
 let lastRequestTime = Date.now();
+let lastKnownStatusIsOn = false;
+
 const MS_IN_SEC = 1000;
+const SECS_IN_MIN = 60;
 const MIN_TIME_THRESHOLD = 30 * MS_IN_SEC;
 
-function processTvPacket(packet) {
+// When we get any packet from the TV, query its power status
+// This is rate limited to MIN_TIME_THRESHOLD.
+function processTvPacket() {
     const currentTime = Date.now();
     if ((currentTime - lastRequestTime) > MIN_TIME_THRESHOLD) {
         lastRequestTime = currentTime;
@@ -34,6 +39,12 @@ function processTvPacket(packet) {
     }
 }
 
+/**
+ * When we get the power status of the TV,
+ *  if: - it's not already on
+ *      - its last known status wasn't already ON
+ *  we send the request to dim the lights.
+ */
 cec.on('REPORT_POWER_STATUS', (packet, status) => {
     // LOG the current power status, for debugging
     console.log(`REPORT_POWER_STATUS: (${status}), ${JSON.stringify(packet)}`);
@@ -45,9 +56,34 @@ cec.on('REPORT_POWER_STATUS', (packet, status) => {
 
     if (status === CEC.PowerStatus.ON) {
         console.log(">>> Projector is ON. Doing the thing!");
+
+        if (lastKnownStatusIsOn) {
+            console.log("Last known projector status is on. Skipping to avoid duplicate");
+            return;
+        }
+
         RestClient.dimLights();
+    } else {
+        lastKnownStatusIsOn = false;
     }
 });
+
+
+// We have a watchdog in case we miss the last packet
+// from the tv, so we eventually get the correct last
+// known state.
+function watchdog() {
+    // If we already know the projector is off, then
+    // the script is already primed.
+    if (!lastKnownStatusIsOn) {
+        return;
+    }
+
+    // Otherwise, we pretend the TV sent a packet
+    console.log("Spoofing a fake tv packet in case we missed the last one");
+    processTvPacket();
+}
+setInterval(watchdog, 2 * SECS_IN_MIN * MS_IN_SEC);
 
 // Custom Event handler
 function hijackEmitter(emitter) {
